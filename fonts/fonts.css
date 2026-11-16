@@ -1,0 +1,127 @@
+@charset "utf-8";
+
+/* --------------------------------------------------------------------------
+   Pretendard
+   -------------------------------------------------------------------------- */
+@font-face{
+	font-family:"Pretendard";
+	src:url("./pretendard/PretendardVariable.woff2") format("woff2-variations");
+	font-weight:100 900;
+	font-style:normal;
+	font-display:swap;
+}
+
+/* --------------------------------------------------------------------------
+   Roboto
+   -------------------------------------------------------------------------- */
+@font-face{
+	font-family:"Roboto";
+	src:url("./roboto/Roboto-VariableFont_wdth,wght.ttf") format("truetype");
+	font-weight:100 900;
+	font-style:normal;
+	font-display:swap;
+}
+
+/* --------------------------------------------------------------------------
+   Noto Sans KR
+   -------------------------------------------------------------------------- */
+@font-face{
+	font-family:"Noto Sans KR";
+	src:url("./noto-sans/NotoSansKR-VariableFont_wght.ttf") format("truetype");
+	font-weight:100 900;
+	font-style:normal;
+	font-display:swap;
+}
+
+/* --------------------------------------------------------------------------
+   Bebas Neue
+   -------------------------------------------------------------------------- */
+@font-face{
+	font-family:"Bebas Neue";
+	src:url("./bebas-neue/BebasNeue-Regular.ttf") format("truetype");
+	font-weight:400;
+	font-style:normal;
+	font-display:swap;
+}
+
+
+/* --------------------------------------------------------------------------
+   Marcellus
+   -------------------------------------------------------------------------- */
+@font-face{
+	font-family:"Marcellus";
+	src:url("./marcellus/Marcellus-Regular.ttf") format("truetype");
+	font-weight:400;
+	font-style:normal;
+	font-display:swap;
+}
+
+/* --------------------------------------------------------------------------
+   Noto Serif KR
+   -------------------------------------------------------------------------- */
+@font-face{
+	font-family:"Noto Serif KR";
+	src:url("./noto-serif/NotoSerifKR-VariableFont_wght.ttf") format("truetype");
+	font-weight:200 900;
+	font-style:normal;
+	font-display:swap;
+}
+
+
+/* --------------------------------------------------------------------------
+   Trajan Pro (sect-hr-07 영문 타이틀)
+   -------------------------------------------------------------------------- */
+@font-face{
+	font-family:"TrajanPro";
+	src:url("./trajan/TrajanPro-Regular.woff") format("woff");
+	font-weight:400;
+	font-style:normal;
+	font-display:swap;
+}
+@font-face{
+	font-family:"TrajanPro";
+	src:url("./trajan/TrajanPro-Bold.woff") format("woff");
+	font-weight:600;
+	font-style:normal;
+	font-display:swap;
+}
+
+/* --------------------------------------------------------------------------
+   Montserrat (sect-hr-09 영문 서브 타이틀)
+   -------------------------------------------------------------------------- */
+@font-face{
+	font-family:"Montserrat";
+	src:url("./montserrat/Montserrat-Variable.woff2") format("woff2-variations");
+	font-weight:100 900;
+	font-style:normal;
+	font-display:swap;
+}
+
+/* --------------------------------------------------------------------------
+   Poppins SemiBold (sect-mt-02 영문 타이틀)
+   -------------------------------------------------------------------------- */
+@font-face{
+	font-family:"Poppins";
+	src:url("./poppins/Poppins-SemiBold.woff2") format("woff2");
+	font-weight:600;
+	font-style:normal;
+	font-display:swap;
+}
+
+/* --------------------------------------------------------------------------
+   Lato Regular / Bold (sect-me-06 영문 · 숫자)
+   -------------------------------------------------------------------------- */
+@font-face{
+	font-family:"Lato";
+	src:url("./lato/Lato-Regular.ttf") format("truetype");
+	font-weight:400;
+	font-style:normal;
+	font-display:swap;
+}
+@font-face{
+	font-family:"Lato";
+	src:url("./lato/Lato-Bold.ttf") format("truetype");
+	font-weight:700;
+	font-style:normal;
+	font-display:swap;
+}

@@ -4,7 +4,9 @@ $(function() {
     dyLenisAction();
     dyGnbAction();
     dyVisualSlider();
+    dyIntroAction();
     dyEventSlider();
+    dyEventReveal();
     dyConcernSlider();
     dyCareSlider();
     dyEquipSlider();
@@ -81,13 +83,26 @@ function dyVisualSlider(){
 function dyEventSlider(){
     const $slider = $(".dy-event-slider");
     if(!$slider.length) return;
-    new Swiper($slider[0], {slidesPerView:2, spaceBetween:20, speed:500, grabCursor:true});
+    /* breakpoints: Swiper 4 는 키 값 "이하(max-width)" 기준 */
+    /* 태블릿·모바일: 활성 슬라이드 가운데 정렬 (첫 슬라이드 왼쪽이 비지 않도록 loop) */
+    new Swiper($slider[0], {slidesPerView:2, spaceBetween:20, speed:500, grabCursor:true, loop:true, loopedSlides:6,
+        breakpoints:{
+            767:{slidesPerView:1.2, spaceBetween:12, centeredSlides:true},
+            1279:{slidesPerView:1.6, spaceBetween:20, centeredSlides:true}
+        }
+    });
 }
 
 function dyConcernSlider(){
     const $slider = $(".dy-concern-slider");
     if(!$slider.length) return;
-    const swiper = new Swiper($slider[0], {slidesPerView:5, spaceBetween:20, centeredSlides:true, loop:true, initialSlide:2, slideToClickedSlide:true, speed:500, grabCursor:true, autoplay:{delay:3000, disableOnInteraction:false}});
+    /* 노출 개수가 바뀌면 CSS 의 --dy-concern-card 계산식도 함께 맞춤 (daisy.css 반응형) */
+    const swiper = new Swiper($slider[0], {slidesPerView:5, spaceBetween:20, centeredSlides:true, loop:true, initialSlide:2, slideToClickedSlide:true, speed:500, grabCursor:true, autoplay:{delay:3000, disableOnInteraction:false},
+        breakpoints:{
+            767:{slidesPerView:1.6, spaceBetween:12},
+            1023:{slidesPerView:3, spaceBetween:20}
+        }
+    });
     dyAutoplayInView($slider[0], swiper);
 }
 
@@ -116,7 +131,11 @@ function dyEquipSlider(){
        - 마우스를 올리면 일시정지, 섹션이 화면 밖이면 정지 */
     const $list = $slider.find(".dy-equip-list");
     if($list.children(".dy-equip-item").length < 2) return;
-    const SPEED = 600, STEP = 174;
+    /* 한 칸 이동 거리 = 접힌 카드 폭 + 간격. 반응형에서 폭·간격이 달라지므로 이동 시점에 실제 값으로 계산 (PC 154 + 20 = 174px) */
+    const SPEED = 600;
+    function getStep($items){
+        return $items.eq(1).outerWidth() + (parseFloat($list.css("column-gap")) || 0);
+    }
     let timer = null,
         busy = false,
         inView = !("IntersectionObserver" in window),
@@ -129,6 +148,7 @@ function dyEquipSlider(){
         const $items = $list.children(".dy-equip-item");
         if(busy || k < 1 || k >= $items.length) return;
         busy = true;
+        const STEP = getStep($items);
         const $leaving = $items.slice(0, k);
         /* 떠나는 카드를 접힌 상태로 뒤에 복제 (오른쪽 빈 공간 방지) */
         $leaving.clone().removeClass("on").appendTo($list);
@@ -158,13 +178,71 @@ function dyEquipSlider(){
         listEl.addEventListener("transitionend", onEnd);
         const fallback = setTimeout(finish, SPEED + 2000);
     }
+    /* 이전 카드: 마지막 카드를 접힌 상태로 맨 앞에 복제하고 한 칸(-STEP) 당겨 둔 뒤,
+       복제 카드를 펼치며 위치를 0 으로 이동 (go 와 반대 방향, 같은 시간·easing).
+       이동이 끝나면 맨 뒤의 원본을 제거 → 이동 중 오른쪽 끝이 비지 않음 */
+    function goPrev(){
+        const $items = $list.children(".dy-equip-item");
+        if(busy || $items.length < 2) return;
+        busy = true;
+        const STEP = getStep($items),
+            $last = $items.last(),
+            $clone = $last.clone().removeClass("on").prependTo($list);
+        $list.css({transition:"none", transform:"translateX(" + (-STEP) + "px)"});
+        $list[0].offsetWidth; /* 시작 위치 즉시 반영 */
+        $list.css({transition:"transform " + SPEED + "ms ease", transform:"translateX(0)"});
+        $items.eq(0).removeClass("on");
+        $clone.addClass("on");
+
+        let done = false;
+        const listEl = $list[0];
+        function finish(){
+            if(done) return;
+            done = true;
+            listEl.removeEventListener("transitionend", onEnd);
+            clearTimeout(fallback);
+            $last.remove();
+            busy = false;
+        }
+        function onEnd(e){
+            if(e.target === listEl && e.propertyName === "transform") finish();
+        }
+        listEl.addEventListener("transitionend", onEnd);
+        const fallback = setTimeout(finish, SPEED + 2000);
+    }
     function stop(){ clearInterval(timer); timer = null; }
     function play(){
         stop();
         if(inView && !hover) timer = setInterval(function(){ go(1); }, 3000);
     }
 
+    /* 마우스 드래그 / 터치 스와이프: 왼쪽으로 끌면 다음, 오른쪽으로 끌면 이전 (40px 이상 이동 시) */
+    const DRAG_MIN = 40;
+    let startX = null,
+        dragged = false;
+    $slider.on("dragstart", function(e){ e.preventDefault(); }); /* 이미지·링크 기본 드래그 방지 */
+    $slider.on("pointerdown", function(e){
+        if(e.pointerType === "mouse" && e.button !== 0) return;
+        startX = e.clientX;
+        dragged = false;
+    });
+    $(document).on("pointerup pointercancel", function(e){
+        if(startX === null) return;
+        const dx = e.type === "pointerup" ? e.clientX - startX : 0;
+        startX = null;
+        if(Math.abs(dx) < DRAG_MIN) return;
+        dragged = true; /* 드래그 직후 발생하는 click 으로 링크 이동·카드 선택이 되지 않도록 */
+        if(dx < 0) go(1);
+        else goPrev();
+        play();
+    });
+
     $list.on("click", ".dy-equip-item a", function(e){
+        if(dragged){
+            dragged = false;
+            e.preventDefault();
+            return;
+        }
         const k = $list.children(".dy-equip-item").index($(this).closest(".dy-equip-item"));
         if(k === 0) return;
         e.preventDefault();
@@ -203,6 +281,96 @@ function dyDailyAction(){
     }
 }
 
+/* 의원 소개·인기시술 검색: 화면에 들어오면 아래에서 위로 등장 (1회, 섹션별로 각각 감지)
+   섹션에 dy-ani-ready 를 붙이고, 안쪽 텍스트·영역의 애니메이션은 CSS 에서 지정 */
+function dyIntroAction(){
+    dyRevealGroups([$(".sect-dy-intro"), $(".sect-dy-search")], "dy-ani-ready");
+}
+
+/* 화면 노출 애니메이션 대상 (아래에서 위로, 1회)
+   - 이벤트: 타이틀 → (슬라이더 + 리스트 동시)
+   - 피부 고민: 타이틀 → 슬라이더 (각각)
+   - DAISY CARE: 타이틀 → 슬라이더 (각각)
+   - 장비: 타이틀 → 슬라이더 (각각)
+   - 의료진: 섹션 단위 감지, 타이틀 → 안내 문구 → 슬라이더 순서는 CSS 지연값으로 지정 (dy-ani-ready)
+   - 공간: 섹션 단위 감지, 타이틀 블러 페이드인 → 슬라이더 영역 위로 등장 (CSS 에서 지정, dy-ani-ready)
+   - 필름: 섹션 전체
+   - DAISY DAILY: 섹션 전체
+   - 전후 사진: 타이틀 → 슬라이더 (각각)
+   - 저널: 타이틀 → 탭 영역 (각각)   - FAQ: 섹션 전체
+   - 오시는 길: 타이틀 → (지도 + 패널) (각각)
+   - 배너 텍스트: 흐릿한 상태에서 선명해지며 페이드인 (배너마다 각각, dy-blur-ready) */
+function dyEventReveal(){
+    dyRevealGroups([
+        $(".dy-event-head"),
+        $(".dy-event-slider, .dy-event-row-list")
+    ]);
+    dyRevealGroups([
+        $(".sect-dy-concern .dy-tit-area"),
+        $(".dy-concern-slider")
+    ]);
+    dyRevealGroups([
+        $(".sect-dy-care .dy-tit-area"),
+        $(".dy-care-slider")
+    ]);
+    dyRevealGroups([
+        $(".sect-dy-equip .dy-tit-area"),
+        $(".sect-dy-equip .dy-equip-slider")
+    ]);
+    dyRevealGroups([$(".sect-dy-doctor")], "dy-ani-ready");
+    dyRevealGroups([$(".sect-dy-space")], "dy-ani-ready");
+    dyRevealGroups([$(".sect-dy-film")]);
+    dyRevealGroups([$(".sect-dy-daily")]);
+    dyRevealGroups([
+        $(".sect-dy-ba .dy-tit-area"),
+        $(".sect-dy-ba .dy-ba-slider")
+    ]);
+    dyRevealGroups([
+        $(".sect-dy-journal .dy-tit-area"),
+        $(".sect-dy-journal .dy-journal-tab-area")
+    ]);    dyRevealGroups([$(".sect-dy-faq")]);
+    dyRevealGroups([
+        $(".sect-dy-visit .dy-tit-area"),
+        $(".sect-dy-visit .dy-visit-area")
+    ]);
+    dyRevealGroups($(".dy-banner-txt").toArray().map(function(el){ return $(el); }), "dy-blur-ready");}
+
+/* 그룹 단위 노출: 그룹의 첫 요소 윗부분이 화면 아래 1/3 지점(화면 높이의 2/3)에 닿으면 그룹 전체를 함께 노출
+   - 같은 순간 함께 노출되는 그룹끼리 0.2s 간격으로 지연 (list 순서 = 노출 순서)
+   - 스크롤 위치로 판단하므로 이미 지나간 요소도 노출 (중간 위치 새로고침·앵커 이동 시 숨겨진 채 남지 않음)
+   - readyClass(기본 dy-up-ready): JS 가 동작할 때만 붙여 미리 숨김 → JS 미동작 시 그대로 노출
+   - 동작 줄이기 설정 사용자는 애니메이션 없이 노출 */
+function dyRevealGroups(list, readyClass){
+    let pending = list.filter(function($g){ return $g.length; });
+    if(!pending.length) return;
+    if(window.matchMedia("(prefers-reduced-motion:reduce)").matches) return;
+    pending.forEach(function($g){ $g.addClass(readyClass || "dy-up-ready"); });
+
+    let ticking = false;
+    function check(){
+        ticking = false;
+        const line = window.innerHeight * 2 / 3;
+        let order = 0;
+        pending = pending.filter(function($g){
+            if($g[0].getBoundingClientRect().top >= line) return true;
+            $g.css("animation-delay", (order++ * 0.2) + "s").addClass("is-show");
+            return false;
+        });
+        if(!pending.length){
+            window.removeEventListener("scroll", onScroll);
+            window.removeEventListener("resize", onScroll);
+        }
+    }
+    function onScroll(){
+        if(ticking) return;
+        ticking = true;
+        requestAnimationFrame(check);
+    }
+    window.addEventListener("scroll", onScroll, {passive:true});
+    window.addEventListener("resize", onScroll);
+    check();
+}
+
 
 /* DAISY CARE: 현재 보이는 슬라이드(활성 + 다음) 2개만 .on → 텍스트 노출, 나머지는 이미지만.
    텍스트 유무로 슬라이드 폭이 달라지므로 .on 갱신 후 update() 로 위치 재계산.
@@ -213,9 +381,12 @@ function dyCareSlider(){
 
     /* wrap: 마지막 슬라이드가 활성일 때 루프로 이어지는 1번 슬라이드까지 포함할지 여부
        (이동 중에는 제외하고, 마지막 슬라이드가 자리에 도착한 뒤에 1번 텍스트를 펼침) */
+    /* 태블릿·모바일(1279 이하)은 활성 슬라이드 1개만 텍스트 노출 */
+    const mqSingle = window.matchMedia("(max-width:1279px)");
     function textOnIndex(swiper, wrap){
         const total = $(swiper.slides).not(".swiper-slide-duplicate").length,
             cur = Number($(swiper.slides).eq(swiper.activeIndex).attr("data-swiper-slide-index"));
+        if(mqSingle.matches) return [cur];
         return cur + 1 < total || wrap ? [cur, (cur + 1) % total] : [cur];
     }
     /* 펼침(이동 시작 즉시): 레이아웃 폭은 한 번에 확정하고, "넓어지는 모습"은 transform 으로만 연출.
@@ -291,6 +462,11 @@ function dyCareSlider(){
         speed:500,
         grabCursor:true,
         autoplay:{delay:3000, disableOnInteraction:false},
+        breakpoints:{
+            /* 모바일: 활성 슬라이드를 화면 중앙에 배치 (카드 폭이 64vw 로 일정해 텍스트 노출과 무관하게 중앙 유지) */
+            767:{slidesOffsetBefore:0, spaceBetween:12, centeredSlides:true},
+            1279:{slidesOffsetBefore:40, spaceBetween:20}
+        },
         on:{
             init:function(){ textExpand(this, false); textCollapse(this); },
             /* 안전장치: 이동 중 목표를 다시 잡는 과정 등에서 브라우저의 transitionend 가 누락되면
@@ -308,6 +484,16 @@ function dyCareSlider(){
         }
     });
     dyAutoplayInView($slider[0], swiper);
+
+    /* 1279 경계를 넘으면 텍스트 노출 개수(1개 ↔ 2개)를 즉시 다시 적용 (addListener: 구형 Safari 호환) */
+    mqSingle.addListener(function(){
+        setTimeout(function(){
+            if(swiper.destroyed) return;
+            textCollapse(swiper);
+            textExpand(swiper, false);
+            swiper.update();
+        }, 0);
+    });
 }
 
 function dyDoctorSlider(){
@@ -326,6 +512,8 @@ function dyDoctorSlider(){
         grabCursor:true,
         autoplay:{delay:3000, disableOnInteraction:false},
         navigation:{nextEl:".dy-doctor-ctrl .dy-arrow-next", prevEl:".dy-doctor-ctrl .dy-arrow-prev"},
+        /* 노출 개수가 바뀌면 CSS 의 --dy-doctor-card 계산식도 함께 맞춤 (daisy.css 반응형) */
+        breakpoints:{767:{slidesPerView:2, spaceBetween:12}},
         on:{
             init:function(){ onUpdate(this); dyProgressUpdate($progress, this, true); },
             slideChange:function(){ onUpdate(this); },
@@ -359,6 +547,8 @@ function dyBaSlider(){
         spaceBetween:20,
         speed:500,
         grabCursor:true,
+        /* 모바일: 활성 슬라이드를 화면 중앙에 배치 */
+        breakpoints:{767:{slidesPerView:1.5, spaceBetween:12, centeredSlides:true}},
         on:{
             init:function(){ dyProgressUpdate($progress, this); },
             progress:function(){ dyProgressUpdate($progress, this); }
